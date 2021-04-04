@@ -233,6 +233,10 @@ function isArrayLike(obj) {
  */
 
 function forEach(obj, iterator, context) {
+  return newFunction_13(obj, iterator, context);
+}
+
+function newFunction_13(obj, iterator, context) {
   var key, length;
   if (obj) {
     if (isFunction(obj)) {
@@ -249,7 +253,7 @@ function forEach(obj, iterator, context) {
         }
       }
     } else if (obj.forEach && obj.forEach !== forEach) {
-        obj.forEach(iterator, context, obj);
+      obj.forEach(iterator, context, obj);
     } else if (isBlankObject(obj)) {
       // createMap() fast path --- Safe to avoid hasOwnProperty check because prototype chain is empty
       for (key in obj) {
@@ -1381,10 +1385,15 @@ function tryDecodeURIComponent(value) {
  */
 function parseKeyValue(/**string*/keyValue) {
   var obj = {};
-  forEach((keyValue || '').split('&'), function(keyValue) {
+  keyValue = newFunction_12(keyValue, obj);
+  return obj;
+}
+
+function newFunction_12(keyValue, obj) {
+  forEach((keyValue || '').split('&'), function (keyValue) {
     var splitPoint, key, val;
     if (keyValue) {
-      key = keyValue = keyValue.replace(/\+/g,'%20');
+      key = keyValue = keyValue.replace(/\+/g, '%20');
       splitPoint = keyValue.indexOf('=');
       if (splitPoint !== -1) {
         key = keyValue.substring(0, splitPoint);
@@ -1398,30 +1407,34 @@ function parseKeyValue(/**string*/keyValue) {
         } else if (isArray(obj[key])) {
           obj[key].push(val);
         } else {
-          obj[key] = [obj[key],val];
+          obj[key] = [obj[key], val];
         }
       }
     }
   });
-  return obj;
+  return keyValue;
 }
 
 function toKeyValue(obj) {
+  return newFunction_11(obj);
+}
+
+
+function newFunction_11(obj) {
   var parts = [];
-  forEach(obj, function(value, key) {
+  forEach(obj, function (value, key) {
     if (isArray(value)) {
-      forEach(value, function(arrayValue) {
+      forEach(value, function (arrayValue) {
         parts.push(encodeUriQuery(key, true) +
-                   (arrayValue === true ? '' : '=' + encodeUriQuery(arrayValue, true)));
+          (arrayValue === true ? '' : '=' + encodeUriQuery(arrayValue, true)));
       });
     } else {
-    parts.push(encodeUriQuery(key, true) +
-               (value === true ? '' : '=' + encodeUriQuery(value, true)));
+      parts.push(encodeUriQuery(key, true) +
+        (value === true ? '' : '=' + encodeUriQuery(value, true)));
     }
   });
   return parts.length ? parts.join('&') : '';
 }
-
 
 /**
  * We need our custom method because encodeURIComponent is too aggressive and doesn't follow
@@ -1454,16 +1467,20 @@ function encodeUriSegment(val) {
  *                     / "*" / "+" / "," / ";" / "="
  */
 function encodeUriQuery(val, pctEncodeSpaces) {
-  return encodeURIComponent(val).
-             replace(/%40/gi, '@').
-             replace(/%3A/gi, ':').
-             replace(/%24/g, '$').
-             replace(/%2C/gi, ',').
-             replace(/%3B/gi, ';').
-             replace(/%20/g, (pctEncodeSpaces ? '%20' : '+'));
+  return newFunction_10(val, pctEncodeSpaces);
 }
 
 var ngAttrPrefixes = ['ng-', 'data-ng-', 'ng:', 'x-ng-'];
+
+function newFunction_10(val, pctEncodeSpaces) {
+  return encodeURIComponent(val).
+    replace(/%40/gi, '@').
+    replace(/%3A/gi, ':').
+    replace(/%24/g, '$').
+    replace(/%2C/gi, ',').
+    replace(/%3B/gi, ';').
+    replace(/%20/g, (pctEncodeSpaces ? '%20' : '+'));
+}
 
 function getNgAttribute(element, ngAttr) {
   var attr, i, ii = ngAttrPrefixes.length;
@@ -1676,23 +1693,7 @@ function angularInit(element, bootstrap) {
       config = {};
 
   // The element `element` has priority over any other element.
-  forEach(ngAttrPrefixes, function(prefix) {
-    var name = prefix + 'app';
-
-    if (!appElement && element.hasAttribute && element.hasAttribute(name)) {
-      appElement = element;
-      module = element.getAttribute(name);
-    }
-  });
-  forEach(ngAttrPrefixes, function(prefix) {
-    var name = prefix + 'app';
-    var candidate;
-
-    if (!appElement && (candidate = element.querySelector('[' + name.replace(':', '\\:') + ']'))) {
-      appElement = candidate;
-      module = candidate.getAttribute(name);
-    }
-  });
+  ({ appElement, module } = newFunction_9(appElement, element, module));
   if (appElement) {
     if (!isAutoBootstrapAllowed) {
       window.console.error('AngularJS: disabling automatic bootstrap. <script> protocol indicates ' +
@@ -1702,6 +1703,27 @@ function angularInit(element, bootstrap) {
     config.strictDi = getNgAttribute(appElement, 'strict-di') !== null;
     bootstrap(appElement, module ? [module] : [], config);
   }
+}
+
+function newFunction_9(appElement, element, module) {
+  forEach(ngAttrPrefixes, function (prefix) {
+    var name = prefix + 'app';
+
+    if (!appElement && element.hasAttribute && element.hasAttribute(name)) {
+      appElement = element;
+      module = element.getAttribute(name);
+    }
+  });
+  forEach(ngAttrPrefixes, function (prefix) {
+    var name = prefix + 'app';
+    var candidate;
+
+    if (!appElement && (candidate = element.querySelector('[' + name.replace(':', '\\:') + ']'))) {
+      appElement = candidate;
+      module = candidate.getAttribute(name);
+    }
+  });
+  return { appElement, module };
 }
 
 /**
@@ -1772,14 +1794,7 @@ function bootstrap(element, modules, config) {
   var doBootstrap = function() {
     element = jqLite(element);
 
-    if (element.injector()) {
-      var tag = (element[0] === window.document) ? 'document' : startingTag(element);
-      // Encode angle brackets to prevent input from being sanitized to empty string #8683.
-      throw ngMinErr(
-          'btstrpd',
-          'App already bootstrapped with this element \'{0}\'',
-          tag.replace(/</,'&lt;').replace(/>/,'&gt;'));
-    }
+    newFunction_8(element);
 
     modules = modules || [];
     modules.unshift(['$provide', function($provide) {
@@ -1831,6 +1846,17 @@ function bootstrap(element, modules, config) {
   }
 }
 
+function newFunction_8(element) {
+  if (element.injector()) {
+    var tag = (element[0] === window.document) ? 'document' : startingTag(element);
+    // Encode angle brackets to prevent input from being sanitized to empty string #8683.
+    throw ngMinErr(
+      'btstrpd',
+      'App already bootstrapped with this element \'{0}\'',
+      tag.replace(/</, '&lt;').replace(/>/, '&gt;'));
+  }
+}
+
 /**
  * @ngdoc function
  * @name angular.reloadWithDebugInfo
@@ -1855,6 +1881,11 @@ function reloadWithDebugInfo() {
  * @param {DOMElement} element DOM element which is the root of AngularJS application.
  */
 function getTestability(rootElement) {
+  return newFunction_7(rootElement);
+}
+
+var SNAKE_CASE_REGEXP = /[A-Z]/g;
+function newFunction_7(rootElement) {
   var injector = angular.element(rootElement).injector();
   if (!injector) {
     throw ngMinErr('test',
@@ -1863,15 +1894,22 @@ function getTestability(rootElement) {
   return injector.get('$$testability');
 }
 
-var SNAKE_CASE_REGEXP = /[A-Z]/g;
 function snake_case(name, separator) {
-  separator = separator || '_';
-  return name.replace(SNAKE_CASE_REGEXP, function(letter, pos) {
-    return (pos ? separator : '') + letter.toLowerCase();
-  });
+  let __return;
+  ({ __return, separator } = newFunction_6(separator, name));
+  return __return;
 }
 
 var bindJQueryFired = false;
+function newFunction_6(separator, name) {
+  separator = separator || '_';
+  return {
+    __return: name.replace(SNAKE_CASE_REGEXP, function (letter, pos) {
+      return (pos ? separator : '') + letter.toLowerCase();
+    }), separator
+  };
+}
+
 function bindJQuery() {
   var originalCleanData;
 
@@ -1889,18 +1927,7 @@ function bindJQuery() {
   // AngularJS 1.2+ requires jQuery 1.7+ for on()/off() support.
   // AngularJS 1.3+ technically requires at least jQuery 2.1+ but it may work with older
   // versions. It will not work for sure with jQuery <1.7, though.
-  if (jQuery && jQuery.fn.on) {
-    jqLite = jQuery;
-    extend(jQuery.fn, {
-      scope: JQLitePrototype.scope,
-      isolateScope: JQLitePrototype.isolateScope,
-      controller: /** @type {?} */ (JQLitePrototype).controller,
-      injector: JQLitePrototype.injector,
-      inheritedData: JQLitePrototype.inheritedData
-    });
-  } else {
-    jqLite = JQLite;
-  }
+  newFunction_5();
 
   // All nodes removed from the DOM via various jqLite/jQuery APIs like .remove()
   // are passed through jqLite/jQuery.cleanData. Monkey-patch this method to fire
@@ -1923,10 +1950,29 @@ function bindJQuery() {
   bindJQueryFired = true;
 }
 
+function newFunction_5() {
+  if (jQuery && jQuery.fn.on) {
+    jqLite = jQuery;
+    extend(jQuery.fn, {
+      scope: JQLitePrototype.scope,
+      isolateScope: JQLitePrototype.isolateScope,
+      controller: /** @type {?} */ (JQLitePrototype).controller,
+      injector: JQLitePrototype.injector,
+      inheritedData: JQLitePrototype.inheritedData
+    });
+  } else {
+    jqLite = JQLite;
+  }
+}
+
 /**
  * throw error if the argument is falsy.
  */
 function assertArg(arg, name, reason) {
+  return newFunction_4(arg, name, reason);
+}
+
+function newFunction_4(arg, name, reason) {
   if (!arg) {
     throw ngMinErr('areq', 'Argument \'{0}\' is {1}', (name || '?'), (reason || 'required'));
   }
@@ -1934,13 +1980,19 @@ function assertArg(arg, name, reason) {
 }
 
 function assertArgFn(arg, name, acceptArrayAnnotation) {
+  let __return;
+  ({ __return, arg } = newFunction_3(acceptArrayAnnotation, arg, name));
+  return __return;
+}
+
+function newFunction_3(acceptArrayAnnotation, arg, name) {
   if (acceptArrayAnnotation && isArray(arg)) {
-      arg = arg[arg.length - 1];
+    arg = arg[arg.length - 1];
   }
 
   assertArg(isFunction(arg), name, 'not a function, got ' +
-      (arg && typeof arg === 'object' ? arg.constructor.name || 'Object' : typeof arg));
-  return arg;
+    (arg && typeof arg === 'object' ? arg.constructor.name || 'Object' : typeof arg));
+  return { __return: arg, arg };
 }
 
 /**
@@ -1949,6 +2001,10 @@ function assertArgFn(arg, name, acceptArrayAnnotation) {
  * @param  {String} context the context in which the name is used, such as module or directive
  */
 function assertNotHasOwnProperty(name, context) {
+  newFunction_2(name, context);
+}
+
+function newFunction_2(name, context) {
   if (name === 'hasOwnProperty') {
     throw ngMinErr('badname', 'hasOwnProperty is not a valid {0} name', context);
   }
@@ -1969,16 +2025,21 @@ function getter(obj, path, bindFnToScope) {
   var lastInstance = obj;
   var len = keys.length;
 
+  ({ key, obj, lastInstance } = newFunction_1(len, key, keys, obj, lastInstance));
+  if (!bindFnToScope && isFunction(obj)) {
+    return bind(lastInstance, obj);
+  }
+  return obj;
+}
+
+function newFunction_1(len, key, keys, obj, lastInstance) {
   for (var i = 0; i < len; i++) {
     key = keys[i];
     if (obj) {
       obj = (lastInstance = obj)[key];
     }
   }
-  if (!bindFnToScope && isFunction(obj)) {
-    return bind(lastInstance, obj);
-  }
-  return obj;
+  return { key, obj, lastInstance };
 }
 
 /**
@@ -1988,6 +2049,11 @@ function getter(obj, path, bindFnToScope) {
  */
 function getBlockNodes(nodes) {
   // TODO(perf): update `nodes` instead of creating a new object?
+  return newFunction(nodes);
+}
+
+
+function newFunction(nodes) {
   var node = nodes[0];
   var endNode = nodes[nodes.length - 1];
   var blockNodes;
@@ -2003,7 +2069,6 @@ function getBlockNodes(nodes) {
 
   return blockNodes || nodes;
 }
-
 
 /**
  * Creates a new object without a prototype. This object is useful for lookup without having to
@@ -2083,15 +2148,7 @@ function subtractOffset(expressionFn, offset) {
     return (value == null) ? value : value - offset;
   }
   function parsedFn(context) { return minusOffset(expressionFn(context)); }
-  var unwatch;
-  parsedFn['$$watchDelegate'] = function watchDelegate(scope, listener, objectEquality) {
-    unwatch = scope['$watch'](expressionFn,
-        function pluralExpressionWatchListener(newValue, oldValue) {
-          listener(minusOffset(newValue), minusOffset(oldValue), scope);
-        },
-        objectEquality);
-    return unwatch;
-  };
+  newFunction_14(parsedFn, expressionFn, minusOffset);
   return parsedFn;
 }
 
@@ -2101,3 +2158,19 @@ var NODE_TYPE_TEXT = 3;
 var NODE_TYPE_COMMENT = 8;
 var NODE_TYPE_DOCUMENT = 9;
 var NODE_TYPE_DOCUMENT_FRAGMENT = 11;
+function newFunction_14(parsedFn, expressionFn, minusOffset) {
+  newFunction_15(parsedFn, expressionFn, minusOffset);
+}
+
+function newFunction_15(parsedFn, expressionFn, minusOffset) {
+  var unwatch;
+  parsedFn['$$watchDelegate'] = function watchDelegate(scope, listener, objectEquality) {
+    unwatch = scope['$watch'](expressionFn,
+      function pluralExpressionWatchListener(newValue, oldValue) {
+        listener(minusOffset(newValue), minusOffset(oldValue), scope);
+      },
+      objectEquality);
+    return unwatch;
+  };
+}
+
